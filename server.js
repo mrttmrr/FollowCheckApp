@@ -1,10 +1,53 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
+
+const CLIENT_ID = '0XdrYmgyb3Ftd2pRYkwyY3RzN2E6MTpja0';
+const CLIENT_SECRET = 't7UkhFWdQlli_Ul9MXVjis_uqA-D0aIpoTkIy3Q-ocQqMuC1X8';
+const REDIRECT_URI = 'https://followcheckapp-production.up.railway.app/callback';
+
+const sessions = {};
+
+app.get('/auth', (req, res) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  const codeVerifier = crypto.randomBytes(32).toString('base64url');
+  const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+  sessions[state] = { codeVerifier };
+  const url = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=tweet.read%20users.read%20follows.read&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+  res.redirect(url);
+});
+
+app.get('/callback', async (req, res) => {
+  const { code, state } = req.query;
+  const session = sessions[state];
+  if (!session) return res.status(400).send('Geçersiz oturum');
+
+  const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: session.codeVerifier
+    })
+  });
+
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) return res.status(400).send('Token alınamadı');
+
+  delete sessions[state];
+  res.redirect(`/?token=${tokenData.access_token}`);
+});
 
 async function fetchAllPages(token, endpoint, params) {
   let results = [];
