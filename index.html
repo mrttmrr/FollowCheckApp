@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>X Takipçi Analizi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+  body { background: #f5f5f5; display: flex; justify-content: center; padding: 2rem; }
+  .app { width: 100%; max-width: 680px; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 1.5rem; }
+  .card { background: white; border: 1px solid #e5e5e5; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  .login-box { text-align: center; padding: 2rem; }
+  .login-box p { color: #666; margin-bottom: 1.5rem; font-size: 15px; }
+  .x-btn { display: inline-flex; align-items: center; gap: 10px; background: black; color: white; padding: 12px 24px; border-radius: 24px; text-decoration: none; font-size: 15px; font-weight: 500; }
+  .x-btn:hover { opacity: 0.85; }
+  .x-btn svg { width: 18px; height: 18px; fill: white; }
+  .user-info { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; padding: 1rem; background: white; border: 1px solid #e5e5e5; border-radius: 12px; }
+  .user-avatar { width: 44px; height: 44px; border-radius: 50%; }
+  .user-name { font-weight: 600; font-size: 15px; }
+  .user-handle { color: #888; font-size: 13px; }
+  .logout { margin-left: auto; font-size: 13px; color: #888; cursor: pointer; text-decoration: underline; }
+  button { padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; background: white; font-size: 13px; cursor: pointer; }
+  .btn-primary { background: black; color: white; border-color: black; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status { padding: 10px; border-radius: 8px; font-size: 13px; text-align: center; background: #f0f0f0; color: #666; margin-top: 10px; }
+  .error { background: #fff0f0; color: #c00; }
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1rem; }
+  .stat { background: white; border-radius: 8px; padding: 0.75rem; text-align: center; border: 1px solid #e5e5e5; }
+  .stat-num { font-size: 22px; font-weight: 600; }
+  .stat-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #eee; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab { padding: 8px 14px; font-size: 13px; border: none; background: none; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: black; border-bottom-color: black; font-weight: 500; }
+  .badge { display: inline-block; background: #f0f0f0; border-radius: 10px; font-size: 11px; padding: 1px 7px; margin-left: 4px; }
+  ul { list-style: none; }
+  li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+  li:last-child { border: none; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #e8f0fe; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: #185FA5; flex-shrink: 0; overflow: hidden; }
+  .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+  .uinfo { flex: 1; min-width: 0; }
+  .uname { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uhandle { font-size: 12px; color: #888; }
+  a.ulink { font-size: 12px; color: #666; text-decoration: none; padding: 4px 8px; border: 1px solid #eee; border-radius: 6px; }
+  a.ulink:hover { background: #f5f5f5; }
+  .empty { text-align: center; padding: 2rem; color: #aaa; font-size: 14px; }
+  .analyze-btn { width: 100%; padding: 12px; background: black; color: white; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 0.5rem; }
+  .analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>X Takipçi Analizi</h1>
+
+  <div id="login-section" style="display:none;">
+    <div class="card login-box">
+      <p>X hesabını bağla ve takipçi analizini başlat</p>
+      <a href="/auth" class="x-btn">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.261 5.634 5.903-5.634zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        X ile Giriş Yap
+      </a>
+    </div>
+  </div>
+
+  <div id="main-section" style="display:none;">
+    <div class="user-info" id="user-info"></div>
+    <div class="card" style="text-align:center;">
+      <button class="analyze-btn" id="analyze-btn" onclick="analyze()">Analiz Et</button>
+      <div id="status" style="display:none;" class="status"></div>
+    </div>
+
+    <div id="results" style="display:none;">
+      <div class="stats">
+        <div class="stat"><div class="stat-num" id="s-fw">—</div><div class="stat-lbl">Takip Edilen</div></div>
+        <div class="stat"><div class="stat-num" id="s-fr">—</div><div class="stat-lbl">Takipçi</div></div>
+        <div class="stat"><div class="stat-num" id="s-mu">—</div><div class="stat-lbl">Karşılıklı</div></div>
+      </div>
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" id="t1" onclick="showTab('nfb')">Seni takip etmeyenler <span class="badge" id="c1">0</span></button>
+          <button class="tab" id="t2" onclick="showTab('nflb')">Takip etmediklerin <span class="badge" id="c2">0</span></button>
+          <button class="tab" id="t3" onclick="showTab('mu')">Karşılıklı <span class="badge" id="c3">0</span></button>
+        </div>
+        <div id="list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let D={nfb:[],nflb:[],mu:[]}, cur='nfb';
+let accessToken = null, currentUser = null;
+
+function getToken() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('token');
+}
+
+async function init() {
+  const token = getToken();
+  if (token) {
+    accessToken = token;
+    window.history.replaceState({}, '', '/');
+    await loadUser();
+  } else {
+    document.getElementById('login-section').style.display = 'block';
+  }
+}
+
+async function loadUser() {
+  try {
+    const res = await fetch('https://api.twitter.com/2/users/me?user.fields=profile_image_url,name,username', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const json = await res.json();
+    currentUser = json.data;
+    document.getElementById('user-info').innerHTML = `
+      <img class="user-avatar" src="${currentUser.profile_image_url}" />
+      <div>
+        <div class="user-name">${currentUser.name}</div>
+        <div class="user-handle">@${currentUser.username}</div>
+      </div>
+      <span class="logout" onclick="logout()">Çıkış</span>
+    `;
+    document.getElementById('main-section').style.display = 'block';
+  } catch(e) {
+    document.getElementById('login-section').style.display = 'block';
+  }
+}
+
+function logout() {
+  accessToken = null;
+  currentUser = null;
+  document.getElementById('main-section').style.display = 'none';
+  document.getElementById('login-section').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+}
+
+function showSt(m,e){const el=document.getElementById('status');el.style.display='block';el.className='status'+(e?' error':'');el.innerHTML=m;}
+function showTab(t){cur=t;['nfb','nflb','mu'].forEach((x,i)=>{document.getElementById('t'+(i+1)).classList.toggle('active',x===t);});renderList();}
+function renderList(){
+  const c=document.getElementById('list'),u=D[cur]||[];
+  if(!u.length){c.innerHTML='<div class="empty">Kullanıcı bulunamadı</div>';return;}
+  c.innerHTML='<ul>'+u.map(u=>{
+    const av=u.profile_image_url?`<img src="${u.profile_image_url}"/>`:(u.name||u.username||'?').substring(0,2).toUpperCase();
+    return `<li><div class="avatar">${av}</div><div class="uinfo"><div class="uname">${u.name||u.username}</div><div class="uhandle">@${u.username}</div></div><a href="https://x.com/${u.username}" target="_blank" class="ulink">Profil</a></li>`;
+  }).join('')+'</ul>';
+}
+
+async function analyze() {
+  if (!accessToken || !currentUser) return;
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  document.getElementById('results').style.display = 'none';
+  showSt('Analiz yapılıyor...');
+  try {
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: accessToken, username: currentUser.username })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Sunucu hatası');
+    D={nfb:json.notFollowingBack,nflb:json.notFollowedBack,mu:json.mutual};
+    document.getElementById('s-fw').textContent=json.following;
+    document.getElementById('s-fr').textContent=json.followers;
+    document.getElementById('s-mu').textContent=json.mutual.length;
+    document.getElementById('c1').textContent=json.notFollowingBack.length;
+    document.getElementById('c2').textContent=json.notFollowedBack.length;
+    document.getElementById('c3').textContent=json.mutual.length;
+    document.getElementById('status').style.display='none';
+    document.getElementById('results').style.display='block';
+    renderList();
+  } catch(e) {
+    showSt('Hata: '+e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
